@@ -196,3 +196,251 @@ Try it out:
 ```bash
 uv tree
 ```
+
+## Unit Testing with pytest
+
+Unit testing is a way to check that your code works as expected. In Python, the most popular tool for this is `pytest`.
+
+### What is pytest?
+
+[pytest](https://docs.pytest.org/) is a testing framework for Python that makes it easy to write automated tests.
+It helps you check that your code behaves as intended and makes it easy to spot bugs early.
+
+### Step 1 - Installing pytest
+
+Install pytest as a development dependency using `uv`:
+
+```bash
+uv add --dev pytest
+```
+
+💡We add pytest as a **development dependency** because it is only needed during development
+and testing, not when running the application in production. This keeps your production
+environment clean and focused only on what is necessary to run your code. After adding pytest, open your `pyproject.toml` file and look for a `[dependency-groups]` section.
+You should see `pytest` listed there. This helps you understand which packages are required for
+development and testing, separate from your main application dependencies.
+
+### Step 2 - Creating a Test File
+
+Test files should be named starting with `test_`. This naming convention allows `pytest` to automatically
+discover your tests.
+
+Create a new file in your project root:
+
+```
+test_main.py
+```
+
+### Step 3 - Writing a Test for `get_ingredients`
+
+Test functions should also start with `test_`. Here is an example test for the `get_ingredients` function:
+
+```python
+import tempfile
+from pathlib import Path
+from main import get_ingredients
+
+def test_get_ingredients():
+    """get_ingredients successfully returns ingredients from the file"""
+    import tempfile
+    content = "Apple\nBanana\nOrange\n"
+    with tempfile.TemporaryDirectory() as tmp_path:
+        recipe_file = Path(tmp_path) / "recipe.txt"
+        recipe_file.write_text(content)
+        expected = ["Apple", "Banana", "Orange"]
+        assert get_ingredients(recipe_file) == expected
+```
+
+💡The function name and docstring describe exactly what is being tested. 
+The test acts as a specification: choose names and descriptions carefully so others understand what the code should do.
+
+### Step 4 - Running Your Tests
+
+**With uv:**
+```bash
+uv run pytest
+```
+
+**With PyCharm:**
+- Right-click the test file or function and select to run Python tests.
+- You might need to configure PyCharm to use `pytest` as the test runner in _Preferences > Python > Tools > Integrated Tools > Default test runner: pytest_
+
+### Step 5 - See what happens when the things change
+
+Let's add another test for `get_ingredients` to check its behavior when the file does not exist:
+
+```python
+def test_get_ingredients_file_does_not_exist():
+    """get_ingredients returns an empty list of ingredients if the file does not exist"""
+    with tempfile.TemporaryDirectory() as tmp_path:
+        non_existent_file = Path(tmp_path) / "non_existent.txt"
+        assert get_ingredients(non_existent_file) == []
+```
+
+Add this test to your test file. Run your tests to make sure everything is green and works as expected.
+
+Now, let's change the implementation of `get_ingredients` in `main.py` to raise an error if the file does not exist:
+
+```python
+def get_ingredients(recipe_file: Path) -> list[str]:
+    if not recipe_file.exists():
+        raise FileNotFoundError(f"The file {recipe_file} does not exist.")
+    # ...existing code...
+```
+
+Run your tests again. 💥 **BOOM!** You get immediate feedback that something is broken. The contract of the function was to return an empty list if the file does not exist, not to fail! This might break code in other places and change existing behavior.
+
+Revert your change to the implementation until all tests are green again. This is how tests help you catch breaking changes early and keep your code reliable.
+
+### 🚀 Level Up
+
+Finished early? Put your testing skills to the next level with these "Pro" moves.
+
+#### Generate a nice HTML test report
+
+Tests are great. A nice report is even better!
+Use the `pytest-html` plugin to generate a HTML report for your tests.
+
+1.  Add the plugin: `uv add --dev pytest-html`
+2.  Run the tests with the report option: `uv run pytest --html=report.html`
+3.  Open `report.html` in your browser.
+
+#### Use Test Fixtures
+
+Test fixtures are functions that run before (and sometimes after) your tests to set up the environment.
+Check out the [pytest fixture documentation](https://docs.pytest.org/en/stable/explanation/fixtures.html) to learn more.
+
+`pytest` comes with many built-in fixtures. One of them helps us to get rid of the boilerplate code
+for creating temporary directories.
+
+The `tmp_path` fixture provides a temporary directory unique to the test invocation.
+
+**Task:** Refactor your `test_get_ingredients` to use the `tmp_path` fixture.
+
+It should look something like this:
+
+```python
+def test_get_ingredients(tmp_path):
+    """get_ingredients successfully returns ingredients from the file"""
+    content = "Apple\nBanana\nOrange\n"
+    recipe_file = tmp_path / "recipe.txt"
+    recipe_file.write_text(content, encoding="utf-8")
+    
+    expected = ["Apple", "Banana", "Orange"]
+    assert get_ingredients(recipe_file) == expected
+```
+
+#### Design for Testability
+
+Look at the `make_smoothie` function. It is not very test friendly.
+Can you identify why?
+
+<details>
+<summary>👀 Show Reasons</summary>
+
+1.  **Side Effects 1**: It prints directly to the console using `rich.Console` and `print`. To test this, we would need to capture the standard output, which is cumbersome.
+2.  **Dependencies**: It instantiates `Console()` inside the function. We cannot easily swap it out for a mock or a dummy to verify what is being printed.
+3.  **Side Effects 2**: Your test calls the function `pyjokes.get_joke`. "E.T. is calling home" (it will do an internet call). Your test can't be run without internet connection.
+3.  **Time**: It uses `time.sleep()`. This makes tests slow. Tests should be fast!
+</details>
+
+**Challenge 1: A cumbersome test is better than no test at all**
+
+Let's consider that we have to take `make_smoothie` as it is, but we still want to ensure that it properly 
+outputs the ingredients.
+
+Try to write a test for `make_smoothie` that calls the function and verifies that ingredients are printed out.
+*   **Hint**: You can use the [`capsys` fixture](https://docs.pytest.org/en/stable/builtin.html) from pytest to capture standard output.  
+
+<details>
+<summary>👀 Show Solution</summary>
+
+```python
+def test_make_smoothie_prints_added_ingredients(tmp_path, capsys):
+  """make_smoothie prints all ingredients that were added to the smoothie to the console"""
+  # Setup
+  recipe_file = tmp_path / "test.txt"
+  recipe_file.write_text("Apple\nBanana\n")
+  
+  # When: we make a Smoothie
+  make_smoothie(recipe_file)
+
+  # Then: All added ingredients are printed to the console
+  captured = capsys.readouterr()
+  assert "Added Apple" in captured.out
+  assert "Added Banana" in captured.out
+```
+
+</details>
+
+**Challenge 2: Refactor the function for testability by injecting dependencies**
+
+Adaptation for better testability often involves dependency injection.
+Instead of creating the `Console` inside the function, pass it as an argument!
+    
+Change the signature to:
+```python
+def make_smoothie(recipe_file: Path, console: Console) -> list[str]:
+    # remove console = Console() line
+    # ... use the passed console ...
+```
+
+Now that we can inject the dependency, we can pass a special console that records what is printed!
+
+```python
+from rich.console import Console
+
+def test_make_smoothie_prints_added_ingredients(tmp_path):
+  """make_smoothie prints all ingredients that were added to the smoothie to the console"""
+  
+  # Setup
+  recipe_file = tmp_path / "test.txt"
+  recipe_file.write_text("Apple\nBanana\n")
+  
+  # When: we make a Smoothie
+  console = Console(record=True)
+  make_smoothie(recipe_file, console)
+  
+  # Then: All added ingredients are printed to the console
+  text_output = console.export_text()
+  assert "Added Apple" in text_output
+  assert "Added Banana" in text_output
+```
+
+**Challenge 3: Mocking Dependencies**
+
+We solved the console output problem, but we still have `pyjokes.get_joke()`.
+
+**The Problem:**
+1.  **Non-determinism**: The function returns a random joke. We don't know what text to expect in our assertions.
+2.  **External Dependencies**: As mentioned, if this library were to fetch jokes from the internet, our tests would fail offline.
+
+**What is Mocking?**
+Mocking is a technique used in unit testing to replace real objects or functions with "fake" versions (mocks) that simulate the behavior of the real ones. This allows you to eliminate non-determinism and isolate the code you are testing.
+
+Let's write a test `test_make_smoothie_prints_a_joke` that mocks `pyjokes.get_joke` so it always returns a known string instead of "calling home".
+We are going to use the [`monkeypatch` fixture](https://docs.pytest.org/en/stable/builtin.html) from `pytest`. It allows you to safely replace functions for the duration of a test.
+
+```python
+import pyjokes
+
+def test_make_smoothie_prints_a_joke(tmp_path, monkeypatch):
+    """make_smoothie prints a joke"""
+    
+    # Setup
+    recipe_file = tmp_path / "recipe.txt"
+    recipe_file.write_text("Mango\n")
+    # Mocking: Replace pyjokes.get_joke with a lambda that returns a fixed string
+    test_joke = "A mock walks into a bar. The bartender asks, 'What can I get you?' The mock returns None."
+    monkeypatch.setattr(pyjokes, "get_joke", lambda: "A mock walks into a bar. The bartender asks, 'What can I get you?' The mock returns None.")
+
+    # When
+    console = Console(record=True)
+    make_smoothie(recipe_file, console)
+
+    # Then
+    output = console.export_text()
+    assert "The mock returns None" in output
+```
+
+
