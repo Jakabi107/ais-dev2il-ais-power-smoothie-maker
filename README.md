@@ -60,6 +60,14 @@ run
 uv init
 ```
 
+💡At this point in time, we are going to start inspecting and changing code. You should therefore
+now open the project in PyCharm. IDEs like PyCharm or Visual Studio Code will automatically detect 
+that you are using `uv` and will automatically configure itself to e.g. use the virtual environment 
+created by `uv` for your project.
+
+⚠️If you already used PyCharm up to this point, quit it, delete the `.idea` directory in your project directory
+and open the project again in PyCharm.
+
 `uv` created a few files in your project directory. Let's briefly understand what they are:
 
 - **`pyproject.toml`**: The configuration file for your Python. It contains metadata about your project and its required environment.
