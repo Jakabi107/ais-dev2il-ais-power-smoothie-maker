@@ -1,5 +1,6 @@
 from pathlib import Path
 import time
+import pyjokes
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
@@ -16,6 +17,8 @@ def make_smoothie(recipe_file: Path, console: Console = Console()):
         return ingredients
 
     console.print(f"[bold green]Starting to make: {recipe_file.stem.replace('_', ' ').title()}[/bold green]")
+    joke = pyjokes.get_joke()
+    console.print(f"[bold cyan]Let met enlighten you with a joke while you wait: {joke}[/bold cyan]\n")
 
     with Progress(
         SpinnerColumn(),
