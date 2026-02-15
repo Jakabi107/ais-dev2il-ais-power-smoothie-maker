@@ -51,6 +51,10 @@ project dependencies, similar to `pip` and `venv` combined, but much faster.
 
 https://docs.astral.sh/uv/#installation
 
+
+!!!! SUDO ON MAC
+
+
 #### Initialize the Project with `uv`
 
 Now, let's start to manage our poject wiht `uv`. In our project root directory,
