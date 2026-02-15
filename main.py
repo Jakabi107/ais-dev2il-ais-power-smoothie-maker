@@ -2,6 +2,7 @@ from pathlib import Path
 import time
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
+import pyjokes
 
 def get_ingredients(recipe_file: Path) -> list[str]:
     if not recipe_file.exists():
@@ -18,6 +19,8 @@ def make_smoothie(recipe_file: Path) -> list[str]:
         return ingredients
 
     console.print(f"[bold green]Starting to make: {recipe_file.stem.replace('_', ' ').title()}[/bold green]")
+    joke = pyjokes.get_joke()
+    console.print(f"[bold cyan]Let me enlighten you with a joke while you wait: {joke}[/bold cyan]\n")
 
     with Progress(
         SpinnerColumn(),
